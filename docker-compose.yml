@@ -1,0 +1,27 @@
+services:
+
+    db:
+        image: mysql:9.2.0
+        environment:
+            MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_root_password
+            MYSQL_DATABASE: task
+            MYSQL_USER: api
+            MYSQL_PASSWORD_FILE: /run/secrets/db_password
+        secrets:
+            - db_root_password
+            - db_password
+        volumes:
+            - ./db/initialization.sql:/docker-entrypoint-initdb.d/initialization.sql
+            - ./db/healthcheck.sh:/healthcheck.sh
+        healthcheck:
+            test: ./healthcheck.sh
+            interval: 10s
+            timeout: 1s
+            retries: 100
+            start_period: 30s
+
+secrets:
+    db_password:
+        file: ./db_password.txt
+    db_root_password:
+        file: ./db_root_password.txt
