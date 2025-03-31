@@ -9,7 +9,7 @@ WORKDIR /src
 COPY ["Api/Api.csproj", "Api/"]
 RUN dotnet restore "Api/Api.csproj"
 COPY . .
-WORKDIR "/scr/Api"
+WORKDIR "/src/Api"
 RUN dotnet publish "Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
-ENTRYPOINT "/src/Api/entrypoint.sh"
+ENTRYPOINT ["./entrypoint.sh"]

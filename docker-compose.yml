@@ -20,6 +20,23 @@ services:
             retries: 100
             start_period: 30s
 
+    api:
+        build:
+            context: ./api
+            dockerfile: ./api/Dockerfile
+        ports:
+            - 8080:8080
+        environment:
+            DB_PASSWORD_FILE: /run/secrets/db_password
+            DB_CONNECTION_STRING: Server=db;Port=3306;Database=task;User=api;Password={0}
+        secrets:
+            - db_password
+        links:
+            - db
+        depends_on:
+            db:
+                condition: service_healthy
+
 secrets:
     db_password:
         file: ./db_password.txt
