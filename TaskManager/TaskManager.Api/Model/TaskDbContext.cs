@@ -4,4 +4,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace TaskManager.Api.Model;
 
-public class TaskDbContext(DbContextOptions<TaskDbContext> options) : IdentityDbContext<IdentityUser>(options);
+internal class TaskDbContext(DbContextOptions<TaskDbContext> options) : IdentityDbContext<IdentityUser>(options)
+{
+    public DbSet<DbTask> Tasks { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder builder)
+    {
+        base.OnModelCreating(builder);
+
+        builder.Entity<DbTask>().HasOne(task => task.User).WithMany().IsRequired();
+    }
+}
