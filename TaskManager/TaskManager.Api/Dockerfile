@@ -10,6 +10,6 @@ COPY ["TaskManager.Api/TaskManager.Api.csproj", "TaskManager.Api/"]
 COPY ["TaskManager.Common/TaskManager.Common.csproj", "TaskManager.Common/"]
 RUN dotnet restore "TaskManager.Api/TaskManager.Api.csproj"
 COPY . .
-RUN dotnet publish "TaskManager.Api/TaskManager.Api.csproj" -c Release -o /app/api/publish /p:UseAppHost=false
+RUN dotnet publish "TaskManager.Api/TaskManager.Api.csproj" -c Release -o /app/api /p:UseAppHost=false
 
 ENTRYPOINT ["./TaskManager.Api/entrypoint.sh"]

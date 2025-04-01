@@ -29,6 +29,7 @@ services:
         environment:
             DB_PASSWORD_FILE: /run/secrets/db_password
             DB_CONNECTION_STRING: Server=db;Port=3306;Database=task;User=api;Password={0}
+            APPLICATION_URL: http://localhost:8080
         secrets:
             - db_password
         links:
