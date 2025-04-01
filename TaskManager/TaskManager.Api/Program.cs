@@ -1,6 +1,6 @@
-using Api.Model;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using TaskManager.Api.Model;
 
 var builder = WebApplication.CreateBuilder(args);
 
