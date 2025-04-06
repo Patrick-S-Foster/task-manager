@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using TaskManager.Client.Services;
 
 namespace TaskManager.Client;
 
@@ -12,6 +13,10 @@ public static class MauiProgram
             .ConfigureFonts(fonts => { fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular"); });
 
         builder.Services.AddMauiBlazorWebView();
+        builder.Services.AddHttpClient();
+
+        builder.Services.AddSingleton<IAuthenticationService, AuthenticationService>();
+        builder.Services.AddSingleton<IEndpointService, EndpointService>();
 
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
