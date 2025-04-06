@@ -16,9 +16,12 @@ public class AuthenticationService(IHttpClientFactory httpClientFactory, IEndpoi
     private string _refreshToken = string.Empty;
     private DateTime _accessTokenExpiryTime = DateTime.MinValue;
 
+    public event EventHandler? AuthenticationStateChanged;
+
     public bool IsAuthenticated { get; private set; }
 
-    public async Task<TryResultWhenFalse<IEnumerable<string>>> TryRegisterAsync(string email, string password)
+    public async Task<TryResultWhenFalse<(IEnumerable<string> EmailErrors, IEnumerable<string> PasswordErrors)>>
+        TryRegisterAsync(string email, string password)
     {
         using var httpClient = httpClientFactory.CreateClient();
         using var content = new StringContent(
@@ -30,7 +33,7 @@ public class AuthenticationService(IHttpClientFactory httpClientFactory, IEndpoi
 
         if (response.IsSuccessStatusCode)
         {
-            return new TryResultWhenFalse<IEnumerable<string>>(true);
+            return new TryResultWhenFalse<(IEnumerable<string> EmailErrors, IEnumerable<string> PasswordErrors)>(true);
         }
 
         try
@@ -38,17 +41,30 @@ public class AuthenticationService(IHttpClientFactory httpClientFactory, IEndpoi
             if (await JsonNode.ParseAsync(await response.Content.ReadAsStreamAsync()) is JsonObject body &&
                 body["errors"] is JsonObject errors)
             {
-                return new TryResultWhenFalse<IEnumerable<string>>(false)
-                {
-                    Result = errors
-                        .Where(pair => pair.Value is JsonArray)
-                        .Select(pair => pair.Value)
-                        .Cast<JsonArray>()
-                        .SelectMany(array => array)
-                        .Where(item => item is JsonValue)
-                        .Cast<JsonValue>()
-                        .Select(item => item.ToString())
-                };
+                var emailErrors = errors
+                    .Where(pair => pair.Key.Contains("email", StringComparison.InvariantCultureIgnoreCase) ||
+                                   pair.Key.Contains("username", StringComparison.InvariantCultureIgnoreCase))
+                    .Where(pair => pair.Value is JsonArray)
+                    .Select(pair => pair.Value)
+                    .Cast<JsonArray>()
+                    .SelectMany(array => array)
+                    .Where(item => item is JsonValue)
+                    .Cast<JsonValue>()
+                    .Select(item => item.ToString());
+
+                var passwordErrors = errors
+                    .Where(pair => !pair.Key.Contains("email", StringComparison.InvariantCultureIgnoreCase) &&
+                                   !pair.Key.Contains("username", StringComparison.InvariantCultureIgnoreCase))
+                    .Where(pair => pair.Value is JsonArray)
+                    .Select(pair => pair.Value)
+                    .Cast<JsonArray>()
+                    .SelectMany(array => array)
+                    .Where(item => item is JsonValue)
+                    .Cast<JsonValue>()
+                    .Select(item => item.ToString());
+
+                return new TryResultWhenFalse<(IEnumerable<string>, IEnumerable<string>)>(false)
+                    { Result = (emailErrors, passwordErrors) };
             }
         }
         catch (JsonException)
@@ -56,9 +72,9 @@ public class AuthenticationService(IHttpClientFactory httpClientFactory, IEndpoi
             // This is suppressed to not propagate an exception when the response content is not JSON (e.g., empty)
         }
 
-        return new TryResultWhenFalse<IEnumerable<string>>(false)
+        return new TryResultWhenFalse<(IEnumerable<string>, IEnumerable<string>)>(false)
         {
-            Result = [$"An unexpected response schema was received from the server ({response.StatusCode})."]
+            Result = ([$"An unexpected response schema was received from the server ({response.StatusCode})."], [])
         };
     }
 
@@ -94,6 +110,9 @@ public class AuthenticationService(IHttpClientFactory httpClientFactory, IEndpoi
             MediaTypeJson);
 
         IsAuthenticated = await TrySetTokens(await httpClient.PostAsync(endpointService.Login, content));
+
+        AuthenticationStateChanged?.Invoke(this, EventArgs.Empty);
+
         return IsAuthenticated;
     }
 
@@ -135,5 +154,7 @@ public class AuthenticationService(IHttpClientFactory httpClientFactory, IEndpoi
         _refreshToken = string.Empty;
         _accessTokenExpiryTime = DateTime.MinValue;
         await httpClient.SendAsync(request);
+
+        AuthenticationStateChanged?.Invoke(this, EventArgs.Empty);
     }
 }

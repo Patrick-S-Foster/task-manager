@@ -2,9 +2,12 @@
 
 public interface IAuthenticationService
 {
+    event EventHandler? AuthenticationStateChanged;
+
     bool IsAuthenticated { get; }
 
-    Task<TryResultWhenFalse<IEnumerable<string>>> TryRegisterAsync(string email, string password);
+    Task<TryResultWhenFalse<(IEnumerable<string> EmailErrors, IEnumerable<string> PasswordErrors)>> TryRegisterAsync(
+        string email, string password);
 
     Task<bool> TryAuthenticateAsync(string email, string password);
 

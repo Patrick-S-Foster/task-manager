@@ -1,11 +1,138 @@
 ﻿@page "/"
+@using System.ComponentModel.DataAnnotations
 @inject IAuthenticationService AuthenticationService
+@implements IDisposable
 
 @if (AuthenticationService.IsAuthenticated)
 {
-    <p>AWESOME</p>
+    <h1>Overview</h1>
 }
 else
 {
-    
+    <h1 class="mb-4">Please Login/Register</h1>
+
+    <EditForm EditContext="@EditContext">
+        <DataAnnotationsValidator/>
+
+        <div class="row mb-3">
+            <label class="col-md-2 col-form-label">Email: <span class="text-danger">*</span></label>
+            <div class="col-md-10">
+                <TextInput @bind-Value="@Data.Email" Placeholder="Enter email address"/>
+                <ValidationMessage For="@(() => Data.Email)"/>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <label class="col-md-2 col-form-label">Password: <span class="text-danger">*</span></label>
+            <div class="col-md-10">
+                <PasswordInput @bind-Value="@Data.Password" Placeholder="Enter password"/>
+                <ValidationMessage For="@(() => Data.Password)"/>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12 text-right">
+                <Button Type="ButtonType.Submit"
+                        Color="ButtonColor.Success"
+                        Class="float-end"
+                        @onclick="OnRegisterAsync">
+                    Register
+                </Button>
+
+                <Button Type="ButtonType.Button"
+                        Color="ButtonColor.Success"
+                        Class="float-end me-2"
+                        @onclick="OnLoginAsync">
+                    Login
+                </Button>
+            </div>
+        </div>
+    </EditForm>
+}
+
+@code {
+
+    private AuthenticationData Data { get; } = new();
+    private EditContext EditContext { get; }
+    private ValidationMessageStore MessageStore { get; }
+
+    public Overview()
+    {
+        EditContext = new EditContext(Data);
+        MessageStore = new ValidationMessageStore(EditContext);
+    }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        AuthenticationService.AuthenticationStateChanged += InvokeStateHasChangedAsync;
+    }
+
+    private void InvokeStateHasChangedAsync(object? sender, EventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnRegisterAsync()
+    {
+        if (Data.Email is not { } email || Data.Password is not { } password)
+        {
+            return;
+        }
+
+        MessageStore.Clear();
+
+        var result = await AuthenticationService.TryRegisterAsync(email, password);
+
+        if (!result.Success)
+        {
+            MessageStore.Add(new FieldIdentifier(Data, nameof(Data.Email)), result.Result.EmailErrors);
+            MessageStore.Add(new FieldIdentifier(Data, nameof(Data.Password)), result.Result.PasswordErrors);
+            return;
+        }
+
+        if (!await AuthenticationService.TryAuthenticateAsync(email, password))
+        {
+            throw new InvalidOperationException("This should never logically happen, as after a successful register, login should succeed.");
+        }
+
+        Data.Email = null;
+        Data.Password = null;
+    }
+
+    private async Task OnLoginAsync()
+    {
+        if (Data.Email is not { } email || Data.Password is not { } password)
+        {
+            return;
+        }
+
+        MessageStore.Clear();
+
+        if (await AuthenticationService.TryAuthenticateAsync(email, password))
+        {
+            Data.Email = null;
+            Data.Password = null;
+            return;
+        }
+
+        MessageStore.Add(new FieldIdentifier(Data, nameof(Data.Email)), "Possibly incorrect email address.");
+        MessageStore.Add(new FieldIdentifier(Data, nameof(Data.Password)), "Possibly incorrect password.");
+    }
+
+    private class AuthenticationData
+    {
+        [Required(ErrorMessage = "Email required.", AllowEmptyStrings = false), EmailAddress, DataType(DataType.EmailAddress)]
+        public string? Email { get; set; }
+
+        [Required(ErrorMessage = "Password required.", AllowEmptyStrings = false)]
+        public string? Password { get; set; }
+    }
+
+    public void Dispose()
+    {
+        AuthenticationService.AuthenticationStateChanged -= InvokeStateHasChangedAsync;
+    }
+
 }

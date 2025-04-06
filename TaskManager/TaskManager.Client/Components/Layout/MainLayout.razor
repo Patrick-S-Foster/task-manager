@@ -1,9 +1,11 @@
 ﻿@inherits LayoutComponentBase
+@implements IDisposable
 @inject IAuthenticationService AuthenticationService
 
 <div class="bb-page">
 
-    <Sidebar Href="/"
+    <Sidebar @ref="Sidebar"
+             Href="/"
              Title="Task Manager"
              DataProvider="SidebarDataProvider"></Sidebar>
 
@@ -14,7 +16,7 @@
                 <Button Color="ButtonColor.Secondary"
                         Outline="true"
                         Size="ButtonSize.Small"
-                        @onclick="AuthenticationService.LogoutAsync">
+                        @onclick="OnLogoutAsync">
                     Logout
                 </Button>
             </div>
@@ -28,6 +30,21 @@
 
 @code {
 
+    public required Sidebar Sidebar { get; set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        AuthenticationService.AuthenticationStateChanged += InvokeStateHasChangedAsync;
+    }
+
+    private void InvokeStateHasChangedAsync(object? sender, EventArgs e)
+    {
+        InvokeAsync(async () => await Sidebar.RefreshDataAsync());
+        InvokeAsync(StateHasChanged);
+    }
+
     private Task<SidebarDataProviderResult> SidebarDataProvider(SidebarDataProviderRequest request)
     {
         if (AuthenticationService.IsAuthenticated)
@@ -39,6 +56,16 @@
         }
 
         return Task.FromResult(request.ApplyTo([]));
+    }
+
+    private async Task OnLogoutAsync()
+    {
+        await AuthenticationService.LogoutAsync();
+    }
+
+    public void Dispose()
+    {
+        AuthenticationService.AuthenticationStateChanged -= InvokeStateHasChangedAsync;
     }
 
 }
