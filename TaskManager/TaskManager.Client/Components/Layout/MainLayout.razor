@@ -1,17 +1,44 @@
 ﻿@inherits LayoutComponentBase
+@inject IAuthenticationService AuthenticationService
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu/>
-    </div>
+<div class="bb-page">
+
+    <Sidebar Href="/"
+             Title="Task Manager"
+             DataProvider="SidebarDataProvider"></Sidebar>
 
     <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
+        @if (AuthenticationService.IsAuthenticated)
+        {
+            <div class="bb-top-row px-4 d-flex justify-content-end">
+                <Button Color="ButtonColor.Secondary"
+                        Outline="true"
+                        Size="ButtonSize.Small"
+                        @onclick="AuthenticationService.LogoutAsync">
+                    Logout
+                </Button>
+            </div>
+        }
 
         <article class="content px-4">
-            @Body
+            <div class="py-2">@Body</div>
         </article>
     </main>
 </div>
+
+@code {
+
+    private Task<SidebarDataProviderResult> SidebarDataProvider(SidebarDataProviderRequest request)
+    {
+        if (AuthenticationService.IsAuthenticated)
+        {
+            return Task.FromResult(request.ApplyTo([
+                new NavItem { Href = "/repositories", IconName = IconName.Git, Text = "Repositories" },
+                new NavItem { Href = "/tasks", IconName = IconName.ListCheck, Text = "Tasks" },
+            ]));
+        }
+
+        return Task.FromResult(request.ApplyTo([]));
+    }
+
+}

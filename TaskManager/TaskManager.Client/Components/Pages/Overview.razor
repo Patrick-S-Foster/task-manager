@@ -1,0 +1,11 @@
+﻿@page "/"
+@inject IAuthenticationService AuthenticationService
+
+@if (AuthenticationService.IsAuthenticated)
+{
+    <p>AWESOME</p>
+}
+else
+{
+    
+}
