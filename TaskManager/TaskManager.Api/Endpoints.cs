@@ -1,6 +1,7 @@
 ﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using TaskManager.Api.Model;
 using TaskManager.Common;
 using Task = TaskManager.Common.Task;
@@ -20,21 +21,15 @@ internal static class Endpoints
 
     public static void MapCrudEndpoints(this WebApplication app, string applicationUrl)
     {
-        app.MapGet("/tasks/{id:int}",
-            async (TaskDbContext db, UserManager<IdentityUser> userManager, ClaimsPrincipal claimsPrincipal, int id) =>
-            {
-                if (await userManager.GetUserAsync(claimsPrincipal) is not { } user)
-                {
-                    return Results.Unauthorized();
-                }
-
-                if (db.Tasks.FirstOrDefault(t => t.Id == id && t.User == user) is { } task)
-                {
-                    return Results.Ok(task.WithoutIdentityUser());
-                }
-
-                return Results.NotFound();
-            }).RequireAuthorization();
+        app.MapGet("/tasks",
+                async (TaskDbContext db, UserManager<IdentityUser> userManager, ClaimsPrincipal claimsPrincipal) =>
+                    await userManager.GetUserAsync(claimsPrincipal) is { } user
+                        ? Results.Ok(await db.Tasks
+                            .Where(t => t.User == user)
+                            .Select(t => t.WithoutIdentityUser())
+                            .ToListAsync())
+                        : Results.Unauthorized())
+            .RequireAuthorization();
 
         app.MapPost("/create",
             async (TaskDbContext db,
