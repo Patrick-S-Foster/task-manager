@@ -1,3 +1,43 @@
 ﻿@page "/repositories"
+@using TaskManager.Common
+@using Task = System.Threading.Tasks.Task
+@inject ITaskService TaskService
 
-<h1>Repositories</h1>
+<div class="d-md-flex justify-content-between align-items-center">
+      <h1>Repositories</h1>
+      <Button Color="ButtonColor.Primary"
+              Size="ButtonSize.Small"
+              @onclick="OnAddRepositoryAsync">
+            <i class="bi bi-plus"></i> Add Repository
+      </Button>
+</div>
+
+<Grid TItem="Repository"
+      Class="table table-hover table-bordered table-striped flex-grow-1"
+      DataProvider="RepositoryDataProvider"
+      Responsive="false">
+
+      <GridColumns>
+            <GridColumn TItem="Repository" HeaderText="Name" PropertyName="@nameof(Repository.Name)" Class="flex-grow-0">
+                  @context.Name
+            </GridColumn>
+            <GridColumn TItem="Repository" HeaderText="URL" PropertyName="@nameof(Repository.Url)" Class="flex-grow-1">
+                  @context.Url
+            </GridColumn>
+      </GridColumns>
+
+</Grid>
+
+@code {
+
+      private async Task<GridDataProviderResult<Repository>> RepositoryDataProvider(GridDataProviderRequest<Repository> request) =>
+            request.ApplyTo((await TaskService.GetTasksAsync())
+                  .SelectMany(task => task.Branches ?? [])
+                  .Select(branch => branch.Repository));
+
+      private Task OnAddRepositoryAsync()
+      {
+            throw new NotImplementedException();
+      }
+
+}
