@@ -1,9 +1,17 @@
 ﻿@page "/"
 @using System.ComponentModel.DataAnnotations
 @inject IAuthenticationService AuthenticationService
+@inject IGitService GitService
 @implements IDisposable
 
-@if (AuthenticationService.IsAuthenticated)
+@if (!GitService.IsGitInstalled())
+{
+    <h1>Error</h1>
+
+    <p><a href="https://git-scm.com/">Git</a> is not installed on your system. Git is required for this application to
+        run.</p>
+}
+else if (AuthenticationService.IsAuthenticated)
 {
     <h1>Overview</h1>
 }

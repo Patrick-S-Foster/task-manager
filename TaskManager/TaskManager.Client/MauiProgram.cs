@@ -19,6 +19,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<IAuthenticationService, AuthenticationService>();
         builder.Services.AddSingleton<IEndpointService, EndpointService>();
         builder.Services.AddSingleton<ITaskService, TaskService>();
+        builder.Services.AddSingleton<IGitService, GitService>();
 
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
