@@ -1,6 +1,7 @@
 ﻿@inherits LayoutComponentBase
 @implements IDisposable
 @inject IAuthenticationService AuthenticationService
+@inject NavigationManager NavigationManager
 
 <div class="bb-page">
 
@@ -12,7 +13,7 @@
     <main>
         @if (AuthenticationService.IsAuthenticated)
         {
-            <div class="bb-top-row px-4 d-flex justify-content-end">
+            <div class="bb-top-row px-4 d-flex justify-content-end sticky-top">
                 <Button Color="ButtonColor.Secondary"
                         Outline="true"
                         Size="ButtonSize.Small"
@@ -36,11 +37,16 @@
     {
         base.OnInitialized();
 
-        AuthenticationService.AuthenticationStateChanged += InvokeStateHasChangedAsync;
+        AuthenticationService.AuthenticationStateChanged += OnAuthenticationStateChanged;
     }
 
-    private void InvokeStateHasChangedAsync(object? sender, EventArgs e)
+    private void OnAuthenticationStateChanged(object? sender, EventArgs e)
     {
+        if (!AuthenticationService.IsAuthenticated)
+        {
+            NavigationManager.NavigateTo("/");
+        }
+
         InvokeAsync(async () => await Sidebar.RefreshDataAsync());
         InvokeAsync(StateHasChanged);
     }
@@ -65,7 +71,7 @@
 
     public void Dispose()
     {
-        AuthenticationService.AuthenticationStateChanged -= InvokeStateHasChangedAsync;
+        AuthenticationService.AuthenticationStateChanged -= OnAuthenticationStateChanged;
     }
 
 }

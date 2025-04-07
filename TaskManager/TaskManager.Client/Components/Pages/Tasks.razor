@@ -1,3 +1,67 @@
 ﻿@page "/tasks"
+@using TaskManager.Common
+@using Task = TaskManager.Common.Task
+@inject ITaskService TaskService
 
-<h1>Tasks</h1>
+<div class="d-md-flex justify-content-between align-items-center">
+      <h1>Tasks</h1>
+      <Button Color="ButtonColor.Primary"
+              Size="ButtonSize.Small"
+              @onclick="OnAddTaskAsync">
+            <i class="bi bi-plus"></i> Add Task
+      </Button>
+</div>
+
+<Grid TItem="Task"
+      Class="table table-hover table-bordered table-striped flex-grow-1"
+      DataProvider="TaskDataProvider"
+      Responsive="false"
+      AllowRowClick="true"
+      OnRowDoubleClick="OnRowDoubleClick">
+
+      <GridColumns>
+            <GridColumn TItem="Task" HeaderText="Id" PropertyName="@nameof(Task.Id)" Class="flex-grow-0">
+                  @context.Id
+            </GridColumn>
+            <GridColumn TItem="Task" HeaderText="Name" PropertyName="@nameof(Task.Name)" Class="flex-grow-1">
+                  @context.Name
+            </GridColumn>
+            <GridColumn TItem="Task"
+                        HeaderText="State"
+                        PropertyName="@nameof(Task.State)"
+                        Class="flex-grow-0 text-center">
+                  @switch (context.State)
+                  {
+                        case TaskState.Running:
+                              <i class="bi bi-stopwatch"></i>
+                              break;
+
+                        case TaskState.Completed:
+                              <i class="bi bi-check2-circle"></i>
+                              break;
+
+                        default:
+                              <i class="bi bi-pause-circle"></i>
+                              break;
+                  }
+            </GridColumn>
+      </GridColumns>
+
+</Grid>
+
+@code {
+
+      private async Task<GridDataProviderResult<Task>> TaskDataProvider(GridDataProviderRequest<Task> request) =>
+            request.ApplyTo(await TaskService.GetTasksAsync());
+
+      private System.Threading.Tasks.Task OnRowDoubleClick()
+      {
+            throw new NotImplementedException();
+      }
+
+      private System.Threading.Tasks.Task OnAddTaskAsync()
+      {
+            throw new NotImplementedException();
+      }
+
+}
