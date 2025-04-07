@@ -4,6 +4,8 @@ public interface IEndpointService
 {
     string Logout { get; }
 
+    string Get { get; }
+
     string Register { get; }
 
     string Login { get; }
@@ -11,8 +13,6 @@ public interface IEndpointService
     string Refresh { get; }
 
     string Create { get; }
-
-    string Get(int taskId);
 
     string Update(int taskId);
 
