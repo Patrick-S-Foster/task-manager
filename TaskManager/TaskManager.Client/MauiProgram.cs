@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using CommunityToolkit.Maui;
+using Microsoft.Extensions.Logging;
 using TaskManager.Client.Services;
 
 namespace TaskManager.Client;
@@ -10,6 +11,7 @@ public static class MauiProgram
         var builder = MauiApp.CreateBuilder();
         builder
             .UseMauiApp<App>()
+            .UseMauiCommunityToolkit()
             .ConfigureFonts(fonts => { fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular"); });
 
         builder.Services.AddMauiBlazorWebView();
@@ -20,6 +22,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<IEndpointService, EndpointService>();
         builder.Services.AddSingleton<ITaskService, TaskService>();
         builder.Services.AddSingleton<IGitService, GitService>();
+        builder.Services.AddTransient<IRepositoryService, RepositoryService>();
 
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();

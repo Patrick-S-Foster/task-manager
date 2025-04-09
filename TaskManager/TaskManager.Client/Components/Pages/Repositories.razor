@@ -1,36 +1,103 @@
 ﻿@page "/repositories"
 @using TaskManager.Common
 @using Task = System.Threading.Tasks.Task
+@inject IRepositoryService RepositoryService
+@inject IGitService GitService
 @inject ITaskService TaskService
+
+<Toasts class="p-3" Messages="Messages" Placement="ToastsPlacement.TopRight"/>
+
+<Modal @ref="AddRepositoryModal" Title="Add New Repository">
+      <BodyTemplate>
+            <div class="row mb-3">
+                  <label class="col-md-2 col-form-label">Name:&nbsp;<span class="text-danger">*</span></label>
+                  <div class="col-md-10">
+                        <TextInput @bind-Value="@Name" Placeholder="Enter repository name"/>
+                  </div>
+            </div>
+      </BodyTemplate>
+      <FooterTemplate>
+            <Button Color="ButtonColor.Secondary" @onclick="AddRepositoryModal.HideAsync">Close</Button>
+            <Button Color="ButtonColor.Primary" @onclick="OnConfirmAddRepositoryAsync">Add</Button>
+      </FooterTemplate>
+</Modal>
+
+<Modal @ref="EditRepositoryModal" Title="Edit Repository">
+      <BodyTemplate>
+            <div class="row mb-3">
+                  <label class="col-md-3 col-form-label">Name:&nbsp;<span class="text-danger">*</span></label>
+                  <div class="col-md-9">
+                        <TextInput @bind-Value="@Name" Placeholder="Enter repository name"/>
+                  </div>
+            </div>
+            <div class="row mb-3">
+                  <label class="col-md-3 col-form-label">URL:&nbsp;<span class="text-danger">*</span></label>
+                  <div class="col-md-9">
+                        <TextInput @bind-Value="@Url" Placeholder="Choose a folder" Disabled="true"/>
+                  </div>
+            </div>
+            <div class="row mb-3 justify-content-between align-items-center">
+                  <label class="col-md-3 col-form-label">Local Path:&nbsp;<span class="text-danger">*</span></label>
+                  <Button Color="ButtonColor.Info"
+                          Size="ButtonSize.Medium"
+                          Class="col-md-5"
+                          Style="margin-right: .75rem !important"
+                          @onclick="OnChoseFolderAsync">
+                        Choose a Folder
+                  </Button>
+            </div>
+      </BodyTemplate>
+      <FooterTemplate>
+            <Button Color="ButtonColor.Secondary" @onclick="EditRepositoryModal.HideAsync">Cancel</Button>
+            <Button Color="ButtonColor.Primary" @onclick="OnConfirmEditRepositoryAsync">Confirm</Button>
+      </FooterTemplate>
+</Modal>
 
 <div class="d-md-flex justify-content-between align-items-center">
       <h1>Repositories</h1>
-      <div class="d-md-flex gap-2">
-            <Button Color="ButtonColor.Primary"
-                    Size="ButtonSize.Small"
-                    Outline="true"
-                    @onclick="OnRefreshAsync">
-                  <i class="bi bi-arrow-repeat"></i>
-            </Button>
-            <Button Color="ButtonColor.Primary"
-                    Size="ButtonSize.Small"
-                    @onclick="OnAddRepositoryAsync">
-                  <i class="bi bi-plus"></i> Add Repository
-            </Button>
-      </div>
+      <Button Color="ButtonColor.Primary"
+              Size="ButtonSize.Small"
+              @onclick="OnAddRepositoryAsync">
+            <i class="bi bi-plus"></i> Add Repository
+      </Button>
 </div>
 
-<Grid TItem="Repository"
+<Grid TItem="LocalRepository"
       Class="table table-hover table-bordered table-striped flex-grow-1"
       DataProvider="RepositoryDataProvider"
-      Responsive="false">
+      Responsive="true"
+      @ref="Grid">
 
       <GridColumns>
-            <GridColumn TItem="Repository" HeaderText="Name" PropertyName="@nameof(Repository.Name)" Class="flex-grow-0">
-                  @context.Name
+            <GridColumn TItem="LocalRepository"
+                        HeaderText="Name"
+                        PropertyName="@nameof(LocalRepository.Name)">
+                  <div class="d-md-flex justify-content-start align-items-center gap-2" style="text-overflow: clip">
+                        <Button Color="ButtonColor.Danger"
+                                Size="ButtonSize.ExtraSmall"
+                                @onclick="() => OnDeleteAsync(context)">
+                              <i class="bi bi-x"></i>
+                        </Button>
+                        <Button Color="ButtonColor.Primary"
+                                Outline="true"
+                                Size="ButtonSize.ExtraSmall"
+                                @onclick="() => OnEditAsync(context)">
+                              <i class="bi bi-pencil"></i>
+                        </Button>
+                        @context.Name
+                  </div>
             </GridColumn>
-            <GridColumn TItem="Repository" HeaderText="URL" PropertyName="@nameof(Repository.Url)" Class="flex-grow-1">
-                  @context.Url
+            <GridColumn TItem="LocalRepository"
+                        HeaderText="URL"
+                        PropertyName="@nameof(LocalRepository.Url)"
+                        Class="flex-grow-1">
+                  <div style="overflow-wrap: anywhere">@context.Url</div>
+            </GridColumn>
+            <GridColumn TItem="LocalRepository"
+                        HeaderText="Local Path"
+                        PropertyName="@nameof(LocalRepository.LocalPath)"
+                        Class="flex-grow-1">
+                  <div style="overflow-wrap: anywhere">@context.LocalPath</div>
             </GridColumn>
       </GridColumns>
 
@@ -38,19 +105,106 @@
 
 @code {
 
-      private async Task<GridDataProviderResult<Repository>> RepositoryDataProvider(GridDataProviderRequest<Repository> request) =>
-            request.ApplyTo((await TaskService.GetTasksAsync())
-                  .SelectMany(task => task.Branches ?? [])
-                  .Select(branch => branch.Repository));
+      public required Modal AddRepositoryModal { get; set; }
+      public required Modal EditRepositoryModal { get; set; }
+      public string Name { get; set; } = string.Empty;
+      public string Url { get; set; } = string.Empty;
+      public string LocalPath { get; set; } = string.Empty;
+      public required Grid<LocalRepository> Grid { get; set; }
+      public List<ToastMessage> Messages { get; set; } = [];
+
+      private LocalRepository? _editingLocalRepository;
+
+      protected override async Task OnInitializedAsync()
+      {
+            await base.OnInitializedAsync();
+            await RepositoryService.EnsureLoadedAsync();
+      }
+
+      private Task<GridDataProviderResult<LocalRepository>> RepositoryDataProvider(GridDataProviderRequest<LocalRepository> request) =>
+            Task.FromResult(request.ApplyTo(RepositoryService.Repositories));
 
       private Task OnAddRepositoryAsync()
       {
-            throw new NotImplementedException();
+            Name = string.Empty;
+            return AddRepositoryModal.ShowAsync();
       }
 
-      private Task OnRefreshAsync()
+      private async Task OnConfirmAddRepositoryAsync()
       {
-            throw new NotImplementedException();
+            await AddRepositoryModal.HideAsync();
+            RepositoryService.Repositories.Add(new LocalRepository(Name));
+            await RepositoryService.CommitChangesAsync();
+            await Grid.RefreshDataAsync();
+      }
+
+      private async Task OnConfirmEditRepositoryAsync()
+      {
+            if (_editingLocalRepository is { } localRepository)
+            {
+                  if (RepositoryService.Repositories
+                      .Any(repository => repository.Url is { } url &&
+                                         url.Equals(Url, StringComparison.InvariantCultureIgnoreCase)))
+                  {
+                        Messages.Add(new ToastMessage
+                        {
+                              Type = ToastType.Danger,
+                              Title = "Duplicate Repository Found",
+                              HelpText = $"{DateTime.Now}",
+                              Message = "A duplicate repository origin was found. Repositories must be unique."
+                        });
+                  }
+                  else
+                  {
+                        localRepository.Name = Name;
+                        localRepository.Url = Url;
+                        localRepository.LocalPath = LocalPath;
+
+                        await RepositoryService.CommitChangesAsync();
+                  }
+            }
+
+            await EditRepositoryModal.HideAsync();
+      }
+
+      private async Task OnDeleteAsync(LocalRepository context)
+      {
+            if ((await TaskService.GetTasksAsync())
+                .Where(task => task.Branches is not null)
+                .Select(task => task.Branches)
+                .Cast<IEnumerable<TemporaryBranch>>()
+                .SelectMany(branches => branches)
+                .Any(branch => branch.Repository.Url == context.Url))
+            {
+                  Messages.Add(new ToastMessage
+                  {
+                        Type = ToastType.Danger,
+                        Title = "Can Not Delete Repository",
+                        HelpText = $"{DateTime.Now}",
+                        Message = $"The repository '{context.Name}' can not be deleted as it is used by a task."
+                  });
+                  return;
+            }
+
+            RepositoryService.Repositories.Remove(context);
+            await RepositoryService.CommitChangesAsync();
+            await Grid.RefreshDataAsync();
+      }
+
+      private Task OnEditAsync(LocalRepository context)
+      {
+            _editingLocalRepository = context;
+
+            Name = context.Name;
+            Url = context.Url ?? string.Empty;
+            LocalPath = context.LocalPath ?? string.Empty;
+            return EditRepositoryModal.ShowAsync();
+      }
+
+      private async Task OnChoseFolderAsync()
+      {
+            LocalPath = (await CommunityToolkit.Maui.Storage.FolderPicker.PickAsync(CancellationToken.None)).Folder?.Path ?? string.Empty;
+            Url = GitService.TryGetOrigin(LocalPath, out var origin) ? origin : string.Empty;
       }
 
 }
