@@ -23,12 +23,16 @@ internal static class Endpoints
     {
         app.MapGet("/tasks",
                 async (TaskDbContext db, UserManager<IdentityUser> userManager, ClaimsPrincipal claimsPrincipal) =>
-                    await userManager.GetUserAsync(claimsPrincipal) is { } user
+                {
+                    return await userManager.GetUserAsync(claimsPrincipal) is { } user
                         ? Results.Ok(await db.Tasks
+                            .Include(task => task.Branches)
+                            .Include(task => task.Notes)
                             .Where(t => t.User == user)
                             .Select(t => t.WithoutIdentityUser())
                             .ToListAsync())
-                        : Results.Unauthorized())
+                        : Results.Unauthorized();
+                })
             .RequireAuthorization();
 
         app.MapPost("/create",
@@ -47,8 +51,6 @@ internal static class Endpoints
                     User = user,
                     Name = newTask.Name,
                     Description = newTask.Description ?? string.Empty,
-                    Notes = [],
-                    Branches = [],
                     State = TaskState.Created,
                     LastStart = null,
                     Duration = TimeSpan.Zero
@@ -72,7 +74,11 @@ internal static class Endpoints
                     return Results.Unauthorized();
                 }
 
-                if (await db.Tasks.FindAsync(id) is not { } existingTask || existingTask.User != user)
+                if (await db.Tasks
+                        .Include(t => t.Branches)
+                        .Include(t => t.Notes)
+                        .SingleAsync(t => t.Id == id) is not { } existingTask || 
+                    existingTask.User != user)
                 {
                     return Results.NotFound();
                 }
@@ -82,10 +88,13 @@ internal static class Endpoints
                     return Results.UnprocessableEntity();
                 }
 
+                db.Tasks.Update(existingTask);
                 existingTask.Name = task.Name;
                 existingTask.Description = task.Description;
-                existingTask.Notes = task.Notes;
-                existingTask.Branches = task.Branches;
+                existingTask.Notes.Clear();
+                existingTask.Notes.AddRange(task.Notes);
+                existingTask.Branches.Clear();
+                existingTask.Branches.AddRange(task.Branches);
                 await db.SaveChangesAsync();
 
                 return Results.NoContent();
@@ -102,7 +111,7 @@ internal static class Endpoints
                     return Results.Unauthorized();
                 }
 
-                if (await db.Tasks.FindAsync(id) is not { } existingTask || existingTask.User != user)
+                if (await db.Tasks.SingleAsync(t => t.Id == id) is not { } existingTask || existingTask.User != user)
                 {
                     return Results.NotFound();
                 }
@@ -134,7 +143,7 @@ internal static class Endpoints
                     return Results.Unauthorized();
                 }
 
-                if (await db.Tasks.FindAsync(id) is not { } existingTask || existingTask.User != user)
+                if (await db.Tasks.SingleAsync(t => t.Id == id) is not { } existingTask || existingTask.User != user)
                 {
                     return Results.NotFound();
                 }
@@ -167,7 +176,7 @@ internal static class Endpoints
                     return Results.Unauthorized();
                 }
 
-                if (await db.Tasks.FindAsync(id) is not { } existingTask || existingTask.User != user)
+                if (await db.Tasks.SingleAsync(t => t.Id == id) is not { } existingTask || existingTask.User != user)
                 {
                     return Results.NotFound();
                 }
@@ -200,7 +209,11 @@ internal static class Endpoints
                     return Results.Unauthorized();
                 }
 
-                if (await db.Tasks.FindAsync(id) is not { } existingTask || existingTask.User != user)
+                if (await db.Tasks
+                        .Include(t => t.Branches)
+                        .Include(t => t.Notes)
+                        .SingleAsync(t => t.Id == id) is not { } existingTask || 
+                    existingTask.User != user)
                 {
                     return Results.NotFound();
                 }

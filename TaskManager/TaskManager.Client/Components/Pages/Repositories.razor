@@ -1,5 +1,4 @@
 ﻿@page "/repositories"
-@using TaskManager.Common
 @using Task = System.Threading.Tasks.Task
 @inject IRepositoryService RepositoryService
 @inject IGitService GitService
@@ -111,7 +110,7 @@
       public string Url { get; set; } = string.Empty;
       public string LocalPath { get; set; } = string.Empty;
       public required Grid<LocalRepository> Grid { get; set; }
-      public List<ToastMessage> Messages { get; set; } = [];
+      public List<ToastMessage> Messages { get; } = [];
 
       private LocalRepository? _editingLocalRepository;
 
@@ -170,10 +169,7 @@
       private async Task OnDeleteAsync(LocalRepository context)
       {
             if ((await TaskService.GetTasksAsync())
-                .Where(task => task.Branches is not null)
-                .Select(task => task.Branches)
-                .Cast<IEnumerable<TemporaryBranch>>()
-                .SelectMany(branches => branches)
+                .SelectMany(task => task.Branches)
                 .Any(branch => branch.Repository.Url == context.Url))
             {
                   Messages.Add(new ToastMessage

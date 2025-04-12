@@ -1,6 +1,5 @@
 ﻿using System.Text.Json;
 using Microsoft.JSInterop;
-using TaskManager.Common;
 using Task = System.Threading.Tasks.Task;
 
 namespace TaskManager.Client.Services;
@@ -40,10 +39,7 @@ public partial class RepositoryService(IJSRuntime jsRuntime, ITaskService taskSe
         }
 
         _repositories.AddRange((await taskService.GetTasksAsync())
-            .Select(task => task.Branches)
-            .Where(branches => branches is not null)
-            .Cast<ICollection<TemporaryBranch>>()
-            .SelectMany(branches => branches)
+            .SelectMany(task => task.Branches)
             .Select(branch => branch.Repository)
             .Distinct(new RepositoryEqualityComparer())
             .Select(repository => new LocalRepository(repository.Name) { Id = repository.Id, Url = repository.Url }));

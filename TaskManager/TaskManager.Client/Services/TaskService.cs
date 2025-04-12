@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Net.Http.Json;
+using System.Text.Json;
 using TaskManager.Common;
 using Task = System.Threading.Tasks.Task;
 
@@ -33,6 +34,7 @@ public class TaskService(
     {
         using var httpClient = httpClientFactory.CreateClient();
         using var requestMessage = new HttpRequestMessage(HttpMethod.Post, endpointService.Create);
+        requestMessage.Content = JsonContent.Create(newTask);
 
         if (!await authenticationService.TryAddAuthorizationHeaderAsync(requestMessage))
         {
@@ -53,13 +55,12 @@ public class TaskService(
     {
         using var httpClient = httpClientFactory.CreateClient();
         using var requestMessage = new HttpRequestMessage(HttpMethod.Put, endpointService.Update(task.Id));
+        requestMessage.Content = JsonContent.Create(task);
 
-        if (!await authenticationService.TryAddAuthorizationHeaderAsync(requestMessage))
+        if (await authenticationService.TryAddAuthorizationHeaderAsync(requestMessage))
         {
-            return;
+            using var _ = await httpClient.SendAsync(requestMessage);
         }
-
-        using var _ = await httpClient.SendAsync(requestMessage);
     }
 
     public async Task<Common.Task?> StartTaskAsync(Common.Task task)

@@ -1,8 +1,10 @@
-﻿namespace TaskManager.Common;
+﻿using System.Text.Json.Serialization;
+
+namespace TaskManager.Common;
 
 public class Note
 {
-    public int Id { get; set; }
+    [JsonPropertyName("id")] public int Id { get; set; }
 
-    public required string Text { get; set; }
+    [JsonPropertyName("text")] public required string Text { get; set; }
 }

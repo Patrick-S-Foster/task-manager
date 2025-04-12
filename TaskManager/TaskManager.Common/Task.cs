@@ -4,23 +4,17 @@ namespace TaskManager.Common;
 
 public class Task
 {
-    [JsonPropertyName("id")]
-    public int Id { get; set; }
+    [JsonPropertyName("id")] public int Id { get; set; }
 
-    [JsonPropertyName("name")]
-    public required string Name { get; set; }
+    [JsonPropertyName("name")] public required string Name { get; set; }
 
-    [JsonPropertyName("description")]
-    public required string Description { get; set; }
+    [JsonPropertyName("description")] public required string Description { get; set; }
 
-    [JsonPropertyName("notes")]
-    public required ICollection<Note>? Notes { get; set; }
+    [JsonPropertyName("notes")] public List<Note> Notes { get; init; } = [];
 
-    [JsonPropertyName("branches")]
-    public required ICollection<TemporaryBranch>? Branches { get; set; }
+    [JsonPropertyName("branches")] public List<TemporaryBranch> Branches { get; init; } = [];
 
-    [JsonPropertyName("state")]
-    public required TaskState State { get; set; }
+    [JsonPropertyName("state")] public required TaskState State { get; set; }
 
     /// <summary>
     /// The last date and time at which this task was started or resumed.

@@ -2,6 +2,111 @@
 @using TaskManager.Common
 @using Task = TaskManager.Common.Task
 @inject ITaskService TaskService
+@inject IRepositoryService RepositoryService
+
+<Toasts class="p-3" Messages="Messages" Placement="ToastsPlacement.TopRight"/>
+
+<Modal @ref="AddTaskModal" Title="Add New Task">
+      <BodyTemplate>
+            <div class="row mb-3">
+                  <label class="col-md-3 col-form-label">Name:&nbsp;<span class="text-danger">*</span></label>
+                  <div class="col-md-9">
+                        <TextInput @bind-Value="@Name" Placeholder="Enter task name"/>
+                  </div>
+            </div>
+            <div class="row mb-3">
+                  <label class="col-md-3 col-form-label">Description:&nbsp;</label>
+                  <div class="col-md-9">
+                        <TextAreaInput @bind-Value="@Description" Placeholder="Enter task description"/>
+                  </div>
+            </div>
+      </BodyTemplate>
+      <FooterTemplate>
+            <Button Color="ButtonColor.Secondary" @onclick="AddTaskModal.HideAsync">Close</Button>
+            <Button Color="ButtonColor.Primary" @onclick="OnConfirmAddTaskAsync">Add</Button>
+      </FooterTemplate>
+</Modal>
+
+<Modal @ref="EditTaskModal" Title="Edit Task" Size="ModalSize.ExtraLarge">
+      <BodyTemplate>
+            <div class="row mb-3">
+                  <label class="col-md-3 col-form-label">Name:&nbsp;<span class="text-danger">*</span></label>
+                  <div class="col-md-9">
+                        <TextInput @bind-Value="@EditTask.Name" Placeholder="Enter task name"/>
+                  </div>
+            </div>
+            <div class="row mb-3">
+                  <label class="col-md-3 col-form-label">Description:&nbsp;</label>
+                  <div class="col-md-9">
+                        <TextAreaInput @bind-Value="@EditTask.Description" Placeholder="Enter task description"/>
+                  </div>
+            </div>
+            <div class="row mb-3">
+                  <label class="col-md-3 col-form-label">Notes:&nbsp;</label>
+                  <div class="col-md-9 row justify-content-center">
+                        @for (var i = 0; i < EditTask.Notes.Count; i++)
+                        {
+                              var noteNumber = i + 1;
+                              var note = EditTask.Notes[i];
+
+                              <Card Class="m-2 col-md-5">
+                                    <CardHeader Class="row justify-content-between align-items-center">
+                                          <span style="width: min-content">Note&nbsp;#@noteNumber</span>
+                                          <Button Color="ButtonColor.Danger"
+                                                  Size="ButtonSize.ExtraSmall"
+                                                  Style="width: min-content"
+                                                  @onclick="() => OnDeleteNote(note)">
+                                                <i class="bi bi-x"></i>
+                                          </Button>
+                                    </CardHeader>
+                                    <CardBody>@note.Text</CardBody>
+                              </Card>
+                        }
+
+                        <Card Class="m-2 col-md-5">
+                              <CardBody Class="d-md-flex justify-content-center">
+                                    <Button Color="ButtonColor.Primary"
+                                            Size="ButtonSize.Small"
+                                            Class="m-auto"
+                                            @onclick="OnAddNodeAsync"><i class="bi bi-plus"></i></Button>
+                              </CardBody>
+                        </Card>
+                  </div>
+            </div>
+            <div class="row mb-3">
+                  <label class="col-md-3 col-form-label">Repositories:&nbsp;</label>
+                  <div class="col-md-9 row justify-content-center">
+                        @foreach (var branch in EditTask.Branches)
+                        {
+                              <Card Class="m-2 col-md-5">
+                                    <CardHeader Class="row justify-content-between align-items-center">
+                                          <span style="width: min-content">@branch.Name</span>
+                                          <Button Color="ButtonColor.Danger"
+                                                  Size="ButtonSize.ExtraSmall"
+                                                  Style="width: min-content"
+                                                  @onclick="() => OnDeleteRepository(branch)">
+                                                <i class="bi bi-x"></i>
+                                          </Button>
+                                    </CardHeader>
+                              </Card>
+                        }
+
+                        <Card Class="m-2 col-md-5">
+                              <CardBody Class="d-md-flex justify-content-center">
+                                    <Button Color="ButtonColor.Primary"
+                                            Size="ButtonSize.Small"
+                                            Class="m-auto"
+                                            @onclick="OnAddRepositoryAsync"><i class="bi bi-plus"></i></Button>
+                              </CardBody>
+                        </Card>
+                  </div>
+            </div>
+      </BodyTemplate>
+      <FooterTemplate>
+            <Button Color="ButtonColor.Secondary" @onclick="EditTaskModal.HideAsync">Cancel</Button>
+            <Button Color="ButtonColor.Primary" @onclick="OnConfirmEditTaskAsync">Confirm</Button>
+      </FooterTemplate>
+</Modal>
 
 <div class="d-md-flex justify-content-between align-items-center">
       <h1>Tasks</h1>
@@ -17,13 +122,20 @@
       DataProvider="TaskDataProvider"
       Responsive="false"
       AllowRowClick="true"
-      OnRowDoubleClick="OnRowDoubleClick">
+      OnRowDoubleClick="OnRowDoubleClickAsync"
+      @ref="Grid">
 
       <GridColumns>
-            <GridColumn TItem="Task" HeaderText="Id" PropertyName="@nameof(Task.Id)" Class="flex-grow-0">
+            <GridColumn TItem="Task"
+                        HeaderText="Id"
+                        PropertyName="@nameof(Task.Id)"
+                        Class="flex-grow-0">
                   @context.Id
             </GridColumn>
-            <GridColumn TItem="Task" HeaderText="Name" PropertyName="@nameof(Task.Name)" Class="flex-grow-1">
+            <GridColumn TItem="Task"
+                        HeaderText="Name"
+                        PropertyName="@nameof(Task.Name)"
+                        Class="flex-grow-1">
                   @context.Name
             </GridColumn>
             <GridColumn TItem="Task"
@@ -51,15 +163,73 @@
 
 @code {
 
+      public List<ToastMessage> Messages { get; } = [];
+      public required Modal AddTaskModal { get; set; }
+      public string Name { get; set; } = string.Empty;
+      public string Description { get; set; } = string.Empty;
+      public required Grid<Task> Grid { get; set; }
+      public required Modal EditTaskModal { get; set; }
+
+      public Task EditTask { get; set; } = new()
+      {
+            Name = string.Empty,
+            Description = string.Empty,
+            State = TaskState.Created,
+            LastStart = null,
+            Duration = TimeSpan.Zero
+      };
+
       private async Task<GridDataProviderResult<Task>> TaskDataProvider(GridDataProviderRequest<Task> request) =>
             request.ApplyTo(await TaskService.GetTasksAsync());
 
-      private System.Threading.Tasks.Task OnRowDoubleClick()
+      protected override async System.Threading.Tasks.Task OnInitializedAsync()
+      {
+            await base.OnInitializedAsync();
+            await RepositoryService.EnsureLoadedAsync();
+      }
+
+      private System.Threading.Tasks.Task OnAddTaskAsync()
+      {
+            Name = string.Empty;
+            Description = string.Empty;
+            return AddTaskModal.ShowAsync();
+      }
+
+      private async System.Threading.Tasks.Task OnConfirmAddTaskAsync()
+      {
+            if (await TaskService.CreateTaskAsync(new NewTask { Name = Name, Description = Description }) is null)
+            {
+                  Messages.Add(new ToastMessage
+                  {
+                        Type = ToastType.Danger,
+                        Title = "Could Not Create Task",
+                        HelpText = $"{DateTime.Now}",
+                        Message = $"The new task '{Name}' could not be created due to a server error."
+                  });
+            }
+
+            await AddTaskModal.HideAsync();
+            await Grid.RefreshDataAsync();
+      }
+
+      private System.Threading.Tasks.Task OnConfirmEditTaskAsync() => TaskService.UpdateTaskAsync(EditTask);
+
+      private async System.Threading.Tasks.Task OnRowDoubleClickAsync(GridRowEventArgs<Task> e)
+      {
+            EditTask = (await TaskService.GetTasksAsync()).First(task => task.Id == e.Item.Id);
+            await EditTaskModal.ShowAsync();
+      }
+
+      private void OnDeleteNote(Note note) => EditTask.Notes.Remove(note);
+
+      private void OnDeleteRepository(TemporaryBranch branch) => EditTask.Branches.Remove(branch);
+
+      private System.Threading.Tasks.Task OnAddNodeAsync()
       {
             throw new NotImplementedException();
       }
 
-      private System.Threading.Tasks.Task OnAddTaskAsync()
+      private System.Threading.Tasks.Task OnAddRepositoryAsync()
       {
             throw new NotImplementedException();
       }
