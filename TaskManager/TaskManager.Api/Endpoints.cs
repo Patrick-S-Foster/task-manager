@@ -27,6 +27,7 @@ internal static class Endpoints
                     return await userManager.GetUserAsync(claimsPrincipal) is { } user
                         ? Results.Ok(await db.Tasks
                             .Include(task => task.Branches)
+                            .ThenInclude(branch => branch.Repository)
                             .Include(task => task.Notes)
                             .Where(t => t.User == user)
                             .Select(t => t.WithoutIdentityUser())
@@ -101,7 +102,7 @@ internal static class Endpoints
                 existingTask.Notes.AddRange(task.Notes.Where(note => note.Id is 0));
 
                 foreach (var branch in existingTask.Branches
-                             .Where(branch => task.Branches.Any(b => b.Id == branch.Id))
+                             .Where(branch => task.Branches.All(b => b.Id != branch.Id))
                              .ToList())
                 {
                     existingTask.Branches.Remove(branch);

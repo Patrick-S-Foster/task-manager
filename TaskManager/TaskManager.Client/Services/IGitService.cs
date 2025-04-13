@@ -7,4 +7,6 @@ public interface IGitService
     bool IsGitInstalled();
 
     bool TryGetOrigin(string absolutePath, [MaybeNullWhen(false)] out string origin);
+
+    bool TryGetBaseCommitHash(string absolutePath, [MaybeNullWhen(false)] out string baseCommitHash);
 }

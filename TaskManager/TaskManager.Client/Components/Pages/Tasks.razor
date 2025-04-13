@@ -3,6 +3,7 @@
 @using Task = TaskManager.Common.Task
 @inject ITaskService TaskService
 @inject IRepositoryService RepositoryService
+@inject IGitService GitService
 
 <Toasts class="p-3" Messages="Messages" Placement="ToastsPlacement.TopRight"/>
 
@@ -286,9 +287,20 @@
 
       private System.Threading.Tasks.Task OnConfirmAddRepositoryAsync()
       {
-            if (AddLocalRepository is { } repository)
+            if (AddLocalRepository is { LocalPath: { } localPath, Url: { } url } repository &&
+                GitService.TryGetBaseCommitHash(localPath, out var baseCommitHash))
             {
-                  // TODO: Add to EditTask.Branches
+                  EditTask.Branches.Add(new TemporaryBranch
+                  {
+                        Repository = new Repository
+                        {
+                              Url = url,
+                              Name = repository.Name
+                        },
+                        Name = repository.Name,
+                        HeadCommitHash = null,
+                        BaseCommitHash = baseCommitHash
+                  });
             }
 
             return AddRepositoryModal.HideAsync();
