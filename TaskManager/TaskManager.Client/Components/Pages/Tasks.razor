@@ -163,7 +163,14 @@
                         HeaderText="Id"
                         PropertyName="@nameof(Task.Id)"
                         Class="flex-grow-0">
-                  @context.Id
+                  <div class="d-md-flex justify-content-start align-items-center gap-2" style="text-overflow: clip">
+                        <Button Color="ButtonColor.Danger"
+                                Size="ButtonSize.ExtraSmall"
+                                @onclick="() => OnDeleteAsync(context)">
+                              <i class="bi bi-x"></i>
+                        </Button>
+                        @context.Id
+                  </div>
             </GridColumn>
             <GridColumn TItem="Task"
                         HeaderText="Name"
@@ -310,5 +317,11 @@
             System.Threading.Tasks.Task.FromResult(request.ApplyTo(RepositoryService.Repositories.OrderBy(repository => repository.Name)));
 
       private void OnRepositoryCompleteChanged(LocalRepository repository) => AddLocalRepository = repository;
+
+      private async System.Threading.Tasks.Task OnDeleteAsync(Task context)
+      {
+            await TaskService.DeleteTaskAsync(context);
+            await Grid.RefreshDataAsync();
+      }
 
 }
