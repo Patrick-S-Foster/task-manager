@@ -135,4 +135,7 @@ public class TaskService(
 
         using var _ = await httpClient.SendAsync(requestMessage);
     }
+
+    public async Task<Common.Task?> GetRunningTaskAsync() =>
+        (await GetTasksAsync()).FirstOrDefault(task => task.State is TaskState.Running);
 }

@@ -18,4 +18,6 @@ public interface ITaskService
     Task<Common.Task?> CompleteTaskAsync(Common.Task task);
 
     Task DeleteTaskAsync(Common.Task task);
+
+    Task<Common.Task?> GetRunningTaskAsync();
 }
