@@ -77,7 +77,7 @@ internal static class Endpoints
                 if (await db.Tasks
                         .Include(t => t.Branches)
                         .Include(t => t.Notes)
-                        .SingleAsync(t => t.Id == id) is not { } existingTask || 
+                        .SingleAsync(t => t.Id == id) is not { } existingTask ||
                     existingTask.User != user)
                 {
                     return Results.NotFound();
@@ -88,13 +88,26 @@ internal static class Endpoints
                     return Results.UnprocessableEntity();
                 }
 
-                db.Tasks.Update(existingTask);
                 existingTask.Name = task.Name;
                 existingTask.Description = task.Description;
-                existingTask.Notes.Clear();
-                existingTask.Notes.AddRange(task.Notes);
-                existingTask.Branches.Clear();
-                existingTask.Branches.AddRange(task.Branches);
+
+                foreach (var note in existingTask.Notes
+                             .Where(note => task.Notes.All(n => n.Id != note.Id))
+                             .ToList())
+                {
+                    existingTask.Notes.Remove(note);
+                }
+
+                existingTask.Notes.AddRange(task.Notes.Where(note => note.Id is 0));
+
+                foreach (var branch in existingTask.Branches
+                             .Where(branch => task.Branches.Any(b => b.Id == branch.Id))
+                             .ToList())
+                {
+                    existingTask.Branches.Remove(branch);
+                }
+
+                existingTask.Branches.AddRange(task.Branches.Where(branch => branch.Id is 0));
                 await db.SaveChangesAsync();
 
                 return Results.NoContent();
@@ -212,7 +225,7 @@ internal static class Endpoints
                 if (await db.Tasks
                         .Include(t => t.Branches)
                         .Include(t => t.Notes)
-                        .SingleAsync(t => t.Id == id) is not { } existingTask || 
+                        .SingleAsync(t => t.Id == id) is not { } existingTask ||
                     existingTask.User != user)
                 {
                     return Results.NotFound();

@@ -108,6 +108,38 @@
       </FooterTemplate>
 </Modal>
 
+<Modal @ref="AddNoteModal">
+      <HeaderTemplate>Add Note</HeaderTemplate>
+      <BodyTemplate>
+            <div class="row mb-3">
+                  <label class="col-md-3 col-form-label">Text:&nbsp;</label>
+                  <div class="col-md-9">
+                        <TextAreaInput @bind-Value="@Text" Placeholder="Enter note"/>
+                  </div>
+            </div>
+      </BodyTemplate>
+      <FooterTemplate>
+            <Button Color="ButtonColor.Secondary" @onclick="AddNoteModal.HideAsync">Cancel</Button>
+            <Button Color="ButtonColor.Primary" @onclick="OnConfirmAddNoteAsync">Add</Button>
+      </FooterTemplate>
+</Modal>
+
+<Modal @ref="AddRepositoryModal">
+      <HeaderTemplate>Connect Repository</HeaderTemplate>
+      <BodyTemplate>
+            <AutoComplete @bind-Value="ConnectedLocalRepository"
+                          TItem="LocalRepository"
+                          DataProvider="LocalRepositoryDataProvider"
+                          PropertyName="@nameof(LocalRepository.Name)"
+                          Placeholder="Search a repository"
+                          OnChanged="repository => OnRepositoryCompleteChanged(repository)"></AutoComplete>
+      </BodyTemplate>
+      <FooterTemplate>
+            <Button Color="ButtonColor.Secondary" @onclick="AddRepositoryModal.HideAsync">Cancel</Button>
+            <Button Color="ButtonColor.Primary" @onclick="OnConfirmAddRepositoryAsync">Add</Button>
+      </FooterTemplate>
+</Modal>
+
 <div class="d-md-flex justify-content-between align-items-center">
       <h1>Tasks</h1>
       <Button Color="ButtonColor.Primary"
@@ -167,8 +199,13 @@
       public required Modal AddTaskModal { get; set; }
       public string Name { get; set; } = string.Empty;
       public string Description { get; set; } = string.Empty;
+      public string Text { get; set; } = string.Empty;
+      public string? ConnectedLocalRepository { get; set; }
       public required Grid<Task> Grid { get; set; }
       public required Modal EditTaskModal { get; set; }
+      public required Modal AddNoteModal { get; set; }
+      public required Modal AddRepositoryModal { get; set; }
+      public LocalRepository? AddLocalRepository { get; set; }
 
       public Task EditTask { get; set; } = new()
       {
@@ -212,7 +249,11 @@
             await Grid.RefreshDataAsync();
       }
 
-      private System.Threading.Tasks.Task OnConfirmEditTaskAsync() => TaskService.UpdateTaskAsync(EditTask);
+      private async System.Threading.Tasks.Task OnConfirmEditTaskAsync()
+      {
+            await TaskService.UpdateTaskAsync(EditTask);
+            await EditTaskModal.HideAsync();
+      }
 
       private async System.Threading.Tasks.Task OnRowDoubleClickAsync(GridRowEventArgs<Task> e)
       {
@@ -226,12 +267,36 @@
 
       private System.Threading.Tasks.Task OnAddNodeAsync()
       {
-            throw new NotImplementedException();
+            Text = string.Empty;
+            return AddNoteModal.ShowAsync();
       }
 
       private System.Threading.Tasks.Task OnAddRepositoryAsync()
       {
-            throw new NotImplementedException();
+            ConnectedLocalRepository = null;
+            AddLocalRepository = null;
+            return AddRepositoryModal.ShowAsync();
       }
+
+      private System.Threading.Tasks.Task OnConfirmAddNoteAsync()
+      {
+            EditTask.Notes.Add(new Note { Text = Text });
+            return AddNoteModal.HideAsync();
+      }
+
+      private System.Threading.Tasks.Task OnConfirmAddRepositoryAsync()
+      {
+            if (AddLocalRepository is { } repository)
+            {
+                  // TODO: Add to EditTask.Branches
+            }
+
+            return AddRepositoryModal.HideAsync();
+      }
+
+      private Task<AutoCompleteDataProviderResult<LocalRepository>> LocalRepositoryDataProvider(AutoCompleteDataProviderRequest<LocalRepository> request) =>
+            System.Threading.Tasks.Task.FromResult(request.ApplyTo(RepositoryService.Repositories.OrderBy(repository => repository.Name)));
+
+      private void OnRepositoryCompleteChanged(LocalRepository repository) => AddLocalRepository = repository;
 
 }
