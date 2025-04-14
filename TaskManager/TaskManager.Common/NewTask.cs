@@ -1,8 +1,10 @@
-﻿namespace TaskManager.Common;
+﻿using System.Text.Json.Serialization;
+
+namespace TaskManager.Common;
 
 public class NewTask
 {
-    public required string Name { get; set; }
+    [JsonPropertyName("name")] public required string Name { get; set; }
 
-    public string? Description { get; set; }
+    [JsonPropertyName("description")] public string? Description { get; set; }
 }
