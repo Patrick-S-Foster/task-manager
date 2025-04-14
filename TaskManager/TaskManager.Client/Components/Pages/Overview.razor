@@ -7,7 +7,6 @@
 @inject IAuthenticationService AuthenticationService
 @inject IGitService GitService
 @inject ITaskService TaskService
-@inject IRepositoryService RepositoryService
 @implements IDisposable
 
 @if (!GitService.IsGitInstalled())
@@ -247,19 +246,12 @@ else
             return;
         }
 
-        await TaskService.StartTaskAsync(
-            task,
-            RepositoryService.Repositories.Where(r => r.Url is not null &&
-                                                      task.Branches.Any(b => b.Repository.Url == r.Url)));
+        await TaskService.StartTaskAsync(task);
     }
 
     private async Task OnPauseTaskAsync()
     {
-        await TaskService.PauseTaskAsync(
-            CurrentTask!,
-            RepositoryService.Repositories
-                .Where(r => r.Url is not null &&
-                            CurrentTask!.Branches.Any(b => b.Repository.Url == r.Url)));
+        await TaskService.PauseTaskAsync(CurrentTask!);
         CurrentTask = null;
         await InvokeAsync(StateHasChanged);
     }

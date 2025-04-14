@@ -18,9 +18,14 @@ public partial class RepositoryService
                 return false;
             }
 
-            return x.Url.Equals(y.Url, StringComparison.InvariantCultureIgnoreCase);
+            if (x.Url is null && y.Url is null)
+            {
+                return true;
+            }
+
+            return x.Url!.Equals(y.Url, StringComparison.InvariantCultureIgnoreCase);
         }
 
-        public int GetHashCode(Repository obj) => obj.Url.GetHashCode();
+        public int GetHashCode(Repository obj) => obj.Url?.GetHashCode() ?? 0;
     }
 }

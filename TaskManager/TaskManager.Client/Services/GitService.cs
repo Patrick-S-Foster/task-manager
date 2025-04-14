@@ -110,9 +110,9 @@ public class GitService : IGitService
         return false;
     }
 
-    public TemporaryBranch CreateTemporaryBranch(LocalRepository repository)
+    public TemporaryBranch CreateTemporaryBranch(Repository repository)
     {
-        if (repository is not {Url: {} url, LocalPath: {} localPath} ||
+        if (repository is not { LocalPath: { } localPath } ||
             !TryGetBaseCommitHash(localPath, out var baseCommitHash))
         {
             throw new InvalidOperationException();
@@ -120,6 +120,7 @@ public class GitService : IGitService
 
         var guid = Guid.NewGuid().ToString();
         var createNewBranchCommand = $"git switch -c task-manager/{guid}";
+        const string addCommand = "git add .";
         const string commitCommand = "git commit -am \"Temporary commit for task manager.\"";
         var pushCommand = $"git push --set-upstream origin task-manager/{guid}";
 
@@ -133,6 +134,7 @@ public class GitService : IGitService
 
         process.StandardInput.WriteLine($"cd {localPath}");
         process.StandardInput.WriteLine(createNewBranchCommand);
+        process.StandardInput.WriteLine(addCommand);
         process.StandardInput.WriteLine(commitCommand);
         process.StandardInput.WriteLine(pushCommand);
         process.StandardInput.Close();
@@ -145,26 +147,16 @@ public class GitService : IGitService
 
         return new TemporaryBranch
         {
-            Repository = new Repository
-            {
-                Url = url,
-                Name = repository.Name
-            },
+            Repository = repository,
             Name = $"task-manager/{guid}",
             HeadCommitHash = headCommitHash,
             BaseCommitHash = baseCommitHash
         };
     }
 
-    public void Restore(TemporaryBranch temporaryBranch, LocalRepository localRepository)
+    public void Restore(TemporaryBranch temporaryBranch)
     {
-        // if (repositoryService.Repositories.FirstOrDefault(r =>
-        //         r.Url is not null && temporaryBranch.Repository.Url == r.Url) is not { } repository)
-        // {
-        //     throw new InvalidOperationException();
-        // }
-
-        var switchCommand = $"git switch {localRepository.Name}";
+        var switchCommand = $"git switch {temporaryBranch.Repository.Name}";
         var resetCommand = $"git reset {temporaryBranch.BaseCommitHash}";
 
         using var process = new Process();
@@ -175,7 +167,7 @@ public class GitService : IGitService
         process.StartInfo.CreateNoWindow = true;
         process.Start();
 
-        process.StandardInput.WriteLine($"cd {localRepository.LocalPath}");
+        process.StandardInput.WriteLine($"cd {temporaryBranch.Repository.LocalPath}");
         process.StandardInput.WriteLine(switchCommand);
         process.StandardInput.WriteLine(resetCommand);
         process.StandardInput.Close();

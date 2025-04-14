@@ -129,9 +129,9 @@
       <HeaderTemplate>Connect Repository</HeaderTemplate>
       <BodyTemplate>
             <AutoComplete @bind-Value="ConnectedLocalRepository"
-                          TItem="LocalRepository"
+                          TItem="Repository"
                           DataProvider="LocalRepositoryDataProvider"
-                          PropertyName="@nameof(LocalRepository.Name)"
+                          PropertyName="@nameof(Repository.Name)"
                           Placeholder="Search a repository"
                           OnChanged="repository => OnRepositoryCompleteChanged(repository)"></AutoComplete>
       </BodyTemplate>
@@ -213,7 +213,7 @@
       public required Modal EditTaskModal { get; set; }
       public required Modal AddNoteModal { get; set; }
       public required Modal AddRepositoryModal { get; set; }
-      public LocalRepository? AddLocalRepository { get; set; }
+      public Repository? AddLocalRepository { get; set; }
 
       public Task EditTask { get; set; } = new()
       {
@@ -302,7 +302,8 @@
                         Repository = new Repository
                         {
                               Url = url,
-                              Name = repository.Name
+                              Name = repository.Name,
+                              LocalPath = localPath
                         },
                         Name = repository.Name,
                         HeadCommitHash = null,
@@ -313,10 +314,10 @@
             return AddRepositoryModal.HideAsync();
       }
 
-      private Task<AutoCompleteDataProviderResult<LocalRepository>> LocalRepositoryDataProvider(AutoCompleteDataProviderRequest<LocalRepository> request) =>
+      private Task<AutoCompleteDataProviderResult<Repository>> LocalRepositoryDataProvider(AutoCompleteDataProviderRequest<Repository> request) =>
             System.Threading.Tasks.Task.FromResult(request.ApplyTo(RepositoryService.Repositories.OrderBy(repository => repository.Name)));
 
-      private void OnRepositoryCompleteChanged(LocalRepository repository) => AddLocalRepository = repository;
+      private void OnRepositoryCompleteChanged(Repository repository) => AddLocalRepository = repository;
 
       private async System.Threading.Tasks.Task OnDeleteAsync(Task context)
       {

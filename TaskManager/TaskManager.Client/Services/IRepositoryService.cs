@@ -1,8 +1,11 @@
-﻿namespace TaskManager.Client.Services;
+﻿using TaskManager.Common;
+using Task = System.Threading.Tasks.Task;
+
+namespace TaskManager.Client.Services;
 
 public interface IRepositoryService
 {
-    IList<LocalRepository> Repositories { get; }
+    IList<Repository> Repositories { get; }
 
     Task EnsureLoadedAsync();
 

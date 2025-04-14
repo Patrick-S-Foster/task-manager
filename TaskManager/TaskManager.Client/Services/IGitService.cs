@@ -11,7 +11,7 @@ public interface IGitService
 
     bool TryGetBaseCommitHash(string absolutePath, [MaybeNullWhen(false)] out string baseCommitHash);
 
-    TemporaryBranch CreateTemporaryBranch(LocalRepository repository);
+    TemporaryBranch CreateTemporaryBranch(Repository repository);
 
-    void Restore(TemporaryBranch temporaryBranch, LocalRepository localRepository);
+    void Restore(TemporaryBranch temporaryBranch);
 }

@@ -64,15 +64,13 @@ public class TaskService(
         }
     }
 
-    public async Task<Common.Task?> StartTaskAsync(Common.Task task, IEnumerable<LocalRepository> repositories)
+    public async Task<Common.Task?> StartTaskAsync(Common.Task task)
     {
-        var localRepositories = repositories.ToList();
-
         if (task.State is TaskState.Paused)
         {
             foreach (var branch in task.Branches)
             {
-                gitService.Restore(branch, localRepositories.First(r => r.Url == branch.Repository.Url));
+                gitService.Restore(branch);
             }
         }
 
@@ -94,13 +92,13 @@ public class TaskService(
         return JsonSerializer.Deserialize<Common.Task>(await response.Content.ReadAsStreamAsync());
     }
 
-    public async Task<Common.Task?> PauseTaskAsync(Common.Task task, IEnumerable<LocalRepository> repositories)
+    public async Task<Common.Task?> PauseTaskAsync(Common.Task task)
     {
-        if (task.State is TaskState.Running)
+        if (task.State is not TaskState.Paused and not TaskState.Completed)
         {
-            foreach (var repository in repositories)
+            foreach (var branch in task.Branches)
             {
-                gitService.CreateTemporaryBranch(repository);
+                gitService.CreateTemporaryBranch(branch.Repository);
             }
         }
 

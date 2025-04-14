@@ -1,4 +1,5 @@
 ﻿@page "/repositories"
+@using TaskManager.Common
 @using Task = System.Threading.Tasks.Task
 @inject IRepositoryService RepositoryService
 @inject IGitService GitService
@@ -61,16 +62,16 @@
       </Button>
 </div>
 
-<Grid TItem="LocalRepository"
+<Grid TItem="Repository"
       Class="table table-hover table-bordered table-striped flex-grow-1"
       DataProvider="RepositoryDataProvider"
       Responsive="true"
       @ref="Grid">
 
       <GridColumns>
-            <GridColumn TItem="LocalRepository"
+            <GridColumn TItem="Repository"
                         HeaderText="Name"
-                        PropertyName="@nameof(LocalRepository.Name)">
+                        PropertyName="@nameof(Repository.Name)">
                   <div class="d-md-flex justify-content-start align-items-center gap-2" style="text-overflow: clip">
                         <Button Color="ButtonColor.Danger"
                                 Size="ButtonSize.ExtraSmall"
@@ -86,15 +87,15 @@
                         @context.Name
                   </div>
             </GridColumn>
-            <GridColumn TItem="LocalRepository"
+            <GridColumn TItem="Repository"
                         HeaderText="URL"
-                        PropertyName="@nameof(LocalRepository.Url)"
+                        PropertyName="@nameof(Repository.Url)"
                         Class="flex-grow-1">
                   <div style="overflow-wrap: anywhere">@context.Url</div>
             </GridColumn>
-            <GridColumn TItem="LocalRepository"
+            <GridColumn TItem="Repository"
                         HeaderText="Local Path"
-                        PropertyName="@nameof(LocalRepository.LocalPath)"
+                        PropertyName="@nameof(Repository.LocalPath)"
                         Class="flex-grow-1">
                   <div style="overflow-wrap: anywhere">@context.LocalPath</div>
             </GridColumn>
@@ -109,10 +110,10 @@
       public string Name { get; set; } = string.Empty;
       public string Url { get; set; } = string.Empty;
       public string LocalPath { get; set; } = string.Empty;
-      public required Grid<LocalRepository> Grid { get; set; }
+      public required Grid<Repository> Grid { get; set; }
       public List<ToastMessage> Messages { get; } = [];
 
-      private LocalRepository? _editingLocalRepository;
+      private Repository? _editingLocalRepository;
 
       protected override async Task OnInitializedAsync()
       {
@@ -120,7 +121,7 @@
             await RepositoryService.EnsureLoadedAsync();
       }
 
-      private Task<GridDataProviderResult<LocalRepository>> RepositoryDataProvider(GridDataProviderRequest<LocalRepository> request) =>
+      private Task<GridDataProviderResult<Repository>> RepositoryDataProvider(GridDataProviderRequest<Repository> request) =>
             Task.FromResult(request.ApplyTo(RepositoryService.Repositories));
 
       private Task OnAddRepositoryAsync()
@@ -132,7 +133,12 @@
       private async Task OnConfirmAddRepositoryAsync()
       {
             await AddRepositoryModal.HideAsync();
-            RepositoryService.Repositories.Add(new LocalRepository(Name));
+            RepositoryService.Repositories.Add(new Repository
+            {
+                  Url = null,
+                  Name = Name,
+                  LocalPath = null
+            });
             await RepositoryService.CommitChangesAsync();
             await Grid.RefreshDataAsync();
       }
@@ -166,7 +172,7 @@
             await EditRepositoryModal.HideAsync();
       }
 
-      private async Task OnDeleteAsync(LocalRepository context)
+      private async Task OnDeleteAsync(Repository context)
       {
             if ((await TaskService.GetTasksAsync())
                 .SelectMany(task => task.Branches)
@@ -187,7 +193,7 @@
             await Grid.RefreshDataAsync();
       }
 
-      private Task OnEditAsync(LocalRepository context)
+      private Task OnEditAsync(Repository context)
       {
             _editingLocalRepository = context;
 
