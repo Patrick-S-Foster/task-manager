@@ -56,7 +56,6 @@
         if (AuthenticationService.IsAuthenticated)
         {
             return Task.FromResult(request.ApplyTo([
-                new NavItem { Href = "/statistics", IconName = IconName.BarChartLineFill, Text= "Statistics"},
                 new NavItem { Href = "/repositories", IconName = IconName.Git, Text = "Repositories" },
                 new NavItem { Href = "/tasks", IconName = IconName.ListCheck, Text = "Tasks" }
             ]));
