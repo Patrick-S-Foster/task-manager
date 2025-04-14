@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using TaskManager.Common;
 
 namespace TaskManager.Client.Services;
 
@@ -107,5 +108,77 @@ public class GitService : IGitService
 
         baseCommitHash = null;
         return false;
+    }
+
+    public TemporaryBranch CreateTemporaryBranch(LocalRepository repository)
+    {
+        if (repository is not {Url: {} url, LocalPath: {} localPath} ||
+            !TryGetBaseCommitHash(localPath, out var baseCommitHash))
+        {
+            throw new InvalidOperationException();
+        }
+
+        var guid = Guid.NewGuid().ToString();
+        var createNewBranchCommand = $"git switch -c task-manager/{guid}";
+        const string commitCommand = "git commit -am \"Temporary commit for task manager.\"";
+        var pushCommand = $"git push --set-upstream origin task-manager/{guid}";
+
+        using var process = new Process();
+        process.StartInfo.FileName = "cmd.exe";
+        process.StartInfo.RedirectStandardInput = true;
+        process.StartInfo.RedirectStandardError = true;
+        process.StartInfo.RedirectStandardOutput = true;
+        process.StartInfo.CreateNoWindow = true;
+        process.Start();
+
+        process.StandardInput.WriteLine($"cd {localPath}");
+        process.StandardInput.WriteLine(createNewBranchCommand);
+        process.StandardInput.WriteLine(commitCommand);
+        process.StandardInput.WriteLine(pushCommand);
+        process.StandardInput.Close();
+        process.WaitForExit();
+
+        if (!TryGetBaseCommitHash(localPath, out var headCommitHash))
+        {
+            throw new InvalidOperationException();
+        }
+
+        return new TemporaryBranch
+        {
+            Repository = new Repository
+            {
+                Url = url,
+                Name = repository.Name
+            },
+            Name = $"task-manager/{guid}",
+            HeadCommitHash = headCommitHash,
+            BaseCommitHash = baseCommitHash
+        };
+    }
+
+    public void Restore(TemporaryBranch temporaryBranch, LocalRepository localRepository)
+    {
+        // if (repositoryService.Repositories.FirstOrDefault(r =>
+        //         r.Url is not null && temporaryBranch.Repository.Url == r.Url) is not { } repository)
+        // {
+        //     throw new InvalidOperationException();
+        // }
+
+        var switchCommand = $"git switch {localRepository.Name}";
+        var resetCommand = $"git reset {temporaryBranch.BaseCommitHash}";
+
+        using var process = new Process();
+        process.StartInfo.FileName = "cmd.exe";
+        process.StartInfo.RedirectStandardInput = true;
+        process.StartInfo.RedirectStandardError = true;
+        process.StartInfo.RedirectStandardOutput = true;
+        process.StartInfo.CreateNoWindow = true;
+        process.Start();
+
+        process.StandardInput.WriteLine($"cd {localRepository.LocalPath}");
+        process.StandardInput.WriteLine(switchCommand);
+        process.StandardInput.WriteLine(resetCommand);
+        process.StandardInput.Close();
+        process.WaitForExit();
     }
 }

@@ -8,7 +8,8 @@ namespace TaskManager.Client.Services;
 public class TaskService(
     IHttpClientFactory httpClientFactory,
     IEndpointService endpointService,
-    IAuthenticationService authenticationService) : ITaskService
+    IAuthenticationService authenticationService,
+    IGitService gitService) : ITaskService
 {
     public async Task<IEnumerable<Common.Task>> GetTasksAsync()
     {
@@ -63,9 +64,17 @@ public class TaskService(
         }
     }
 
-    public async Task<Common.Task?> StartTaskAsync(Common.Task task)
+    public async Task<Common.Task?> StartTaskAsync(Common.Task task, IEnumerable<LocalRepository> repositories)
     {
-        // TODO: also change the git repos in all the methods that make sense
+        var localRepositories = repositories.ToList();
+
+        if (task.State is TaskState.Paused)
+        {
+            foreach (var branch in task.Branches)
+            {
+                gitService.Restore(branch, localRepositories.First(r => r.Url == branch.Repository.Url));
+            }
+        }
 
         using var httpClient = httpClientFactory.CreateClient();
         using var requestMessage = new HttpRequestMessage(HttpMethod.Put, endpointService.Start(task.Id));
@@ -85,8 +94,16 @@ public class TaskService(
         return JsonSerializer.Deserialize<Common.Task>(await response.Content.ReadAsStreamAsync());
     }
 
-    public async Task<Common.Task?> PauseTaskAsync(Common.Task task)
+    public async Task<Common.Task?> PauseTaskAsync(Common.Task task, IEnumerable<LocalRepository> repositories)
     {
+        if (task.State is TaskState.Running)
+        {
+            foreach (var repository in repositories)
+            {
+                gitService.CreateTemporaryBranch(repository);
+            }
+        }
+
         using var httpClient = httpClientFactory.CreateClient();
         using var requestMessage = new HttpRequestMessage(HttpMethod.Put, endpointService.Pause(task.Id));
 

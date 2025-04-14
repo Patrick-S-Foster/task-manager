@@ -15,5 +15,5 @@ public class TemporaryBranch
 
     [JsonPropertyName("headCommitHash")] public required string? HeadCommitHash { get; set; }
 
-    [JsonPropertyName("baseCommitHash ")] public required string BaseCommitHash { get; set; }
+    [JsonPropertyName("baseCommitHash")] public required string BaseCommitHash { get; set; }
 }

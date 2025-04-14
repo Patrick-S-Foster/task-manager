@@ -11,9 +11,9 @@ public interface ITaskService
 
     Task UpdateTaskAsync(Common.Task task);
 
-    Task<Common.Task?> StartTaskAsync(Common.Task task);
+    Task<Common.Task?> StartTaskAsync(Common.Task task, IEnumerable<LocalRepository> repositories);
 
-    Task<Common.Task?> PauseTaskAsync(Common.Task task);
+    Task<Common.Task?> PauseTaskAsync(Common.Task task, IEnumerable<LocalRepository> repositories);
 
     Task<Common.Task?> CompleteTaskAsync(Common.Task task);
 
