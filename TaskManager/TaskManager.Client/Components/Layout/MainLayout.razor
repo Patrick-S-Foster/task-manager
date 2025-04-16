@@ -1,0 +1,77 @@
+﻿@inherits LayoutComponentBase
+@implements IDisposable
+@inject IAuthenticationService AuthenticationService
+@inject NavigationManager NavigationManager
+
+<div class="bb-page">
+
+    <Sidebar @ref="Sidebar"
+             Href="/"
+             Title="Task Manager"
+             DataProvider="SidebarDataProvider"></Sidebar>
+
+    <main>
+        @if (AuthenticationService.IsAuthenticated)
+        {
+            <div class="bb-top-row px-4 d-flex justify-content-end sticky-top">
+                <Button Color="ButtonColor.Secondary"
+                        Outline="true"
+                        Size="ButtonSize.Small"
+                        @onclick="OnLogoutAsync">
+                    Logout
+                </Button>
+            </div>
+        }
+
+        <article class="content px-4">
+            <div class="py-2">@Body</div>
+        </article>
+    </main>
+</div>
+
+@code {
+
+    public required Sidebar Sidebar { get; set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        AuthenticationService.AuthenticationStateChanged += OnAuthenticationStateChanged;
+    }
+
+    private void OnAuthenticationStateChanged(object? sender, EventArgs e)
+    {
+        if (!AuthenticationService.IsAuthenticated)
+        {
+            NavigationManager.NavigateTo("/");
+        }
+
+        InvokeAsync(async () => await Sidebar.RefreshDataAsync());
+        InvokeAsync(StateHasChanged);
+    }
+
+    private Task<SidebarDataProviderResult> SidebarDataProvider(SidebarDataProviderRequest request)
+    {
+        if (AuthenticationService.IsAuthenticated)
+        {
+            return Task.FromResult(request.ApplyTo([
+                new NavItem { Href = "/repositories", IconName = IconName.Git, Text = "Repositories" },
+                new NavItem { Href = "/tasks", IconName = IconName.ListCheck, Text = "Tasks" }
+            ]));
+        }
+
+        return Task.FromResult(request.ApplyTo([]));
+    }
+
+    private async Task OnLogoutAsync()
+    {
+        await AuthenticationService.LogoutAsync();
+    }
+
+    public void Dispose()
+    {
+        AuthenticationService.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+    }
+
+}

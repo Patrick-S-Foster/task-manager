@@ -1,0 +1,266 @@
+﻿@page "/"
+@using System.ComponentModel.DataAnnotations
+@using System.Timers
+@using Task = System.Threading.Tasks.Task
+
+@using TaskManager.Common
+@inject IAuthenticationService AuthenticationService
+@inject IGitService GitService
+@inject ITaskService TaskService
+@implements IDisposable
+
+@if (!GitService.IsGitInstalled())
+{
+    <h1>Error</h1>
+
+    <p><a href="https://git-scm.com/">Git</a> is not installed on your system. Git is required for this application to
+        run.</p>
+}
+else if (!AuthenticationService.IsAuthenticated)
+{
+    <h1 class="mb-4">Please Login/Register</h1>
+
+    <EditForm EditContext="@EditContext">
+        <DataAnnotationsValidator/>
+
+        <div class="row mb-3">
+            <label class="col-md-2 col-form-label">Email:&nbsp;<span class="text-danger">*</span></label>
+            <div class="col-md-10">
+                <TextInput @bind-Value="@Data.Email" Placeholder="Enter email address"/>
+                <ValidationMessage For="@(() => Data.Email)"/>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <label class="col-md-2 col-form-label">Password:&nbsp;<span class="text-danger">*</span></label>
+            <div class="col-md-10">
+                <PasswordInput @bind-Value="@Data.Password" Placeholder="Enter password"/>
+                <ValidationMessage For="@(() => Data.Password)"/>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12 text-right">
+                <Button Color="ButtonColor.Success"
+                        Class="float-end"
+                        @onclick="OnRegisterAsync">
+                    Register
+                </Button>
+
+                <Button Type="ButtonType.Submit"
+                        Color="ButtonColor.Success"
+                        Class="float-end me-2"
+                        @onclick="OnLoginAsync">
+                    Login
+                </Button>
+            </div>
+        </div>
+    </EditForm>
+}
+else if (CurrentTask is { } currentTask)
+{
+    var totalElapsed = (DateTime.UtcNow - currentTask.LastStart ?? TimeSpan.Zero) + currentTask.Duration;
+
+    <h1>Currently Running Task</h1>
+
+    <Card Class="">
+        <CardHeader Class="d-md-flex justify-content-between align-items-center">
+            <span>@currentTask.Name (@totalElapsed.Hours.ToString("00"):@totalElapsed.Minutes.ToString("00"):@totalElapsed.Seconds.ToString("00"))</span>
+            <div class="flex-row gap-1">
+                <Button Color="ButtonColor.Primary"
+                        Size="ButtonSize.ExtraSmall"
+                        Outline="true"
+                        Style="width: min-content"
+                        @onclick="OnPauseTaskAsync">
+                    <i class="bi bi-pause"></i>
+                </Button>
+                <Button Color="ButtonColor.Primary"
+                        Size="ButtonSize.ExtraSmall"
+                        Style="width: min-content"
+                        @onclick="OnCompleteTaskAsync">
+                    <i class="bi bi-check2-square"></i>
+                </Button>
+            </div>
+        </CardHeader>
+        <CardBody>
+            <p>@currentTask.Description</p>
+            <div class="row justify-content-center">
+                @for (var i = 0; i < currentTask.Notes.Count; i++)
+                {
+                    var noteNumber = i + 1;
+                    var note = currentTask.Notes[i];
+
+                    <Card Class="m-2 col-md-3">
+                        <CardHeader>Note #@noteNumber</CardHeader>
+                        <CardBody>@note.Text</CardBody>
+                    </Card>
+                }
+            </div>
+            <div class="row justify-content-center">
+                @for (var i = 0; i < currentTask.Branches.Count; i++)
+                {
+                    var branchNumber = i + 1;
+                    var branch = currentTask.Branches[i];
+
+                    <Card Class="m-2 col-md-3">
+                        <CardHeader>Repository #@branchNumber</CardHeader>
+                        <CardBody>@branch.Name</CardBody>
+                    </Card>
+                }
+            </div>
+        </CardBody>
+    </Card>
+}
+else
+{
+    <h1>Start a Task</h1>
+
+    <AutoComplete @bind-Value="CurrentTaskName"
+                  TItem="Common.Task"
+                  DataProvider="TaskDataProvider"
+                  PropertyName="@nameof(Common.Task.Name)"
+                  Placeholder="Search for a task"
+                  OnChanged="task => OnTaskCompleteChanged(task)"></AutoComplete>
+}
+
+@code {
+
+    private readonly Timer _timer = new(TimeSpan.FromMilliseconds(250));
+
+    private AuthenticationData Data { get; } = new();
+    private EditContext EditContext { get; }
+    private ValidationMessageStore MessageStore { get; }
+    private Common.Task? CurrentTask { get; set; }
+    private string? CurrentTaskName { get; set; }
+
+    public Overview()
+    {
+        EditContext = new EditContext(Data);
+        MessageStore = new ValidationMessageStore(EditContext);
+    }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        AuthenticationService.AuthenticationStateChanged += InvokeStateHasChangedAsync;
+        _timer.Elapsed += OnTimerElapsed;
+
+        _timer.Start();
+    }
+
+    private void OnTimerElapsed(object? sender, ElapsedEventArgs e)
+    {
+        if (CurrentTask is not null)
+        {
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        CurrentTask = await TaskService.GetRunningTaskAsync();
+    }
+
+    private void InvokeStateHasChangedAsync(object? sender, EventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnRegisterAsync()
+    {
+        if (Data.Email is not { } email || Data.Password is not { } password)
+        {
+            return;
+        }
+
+        MessageStore.Clear();
+
+        var result = await AuthenticationService.TryRegisterAsync(email, password);
+
+        if (!result.Success)
+        {
+            MessageStore.Add(new FieldIdentifier(Data, nameof(Data.Email)), result.Result.EmailErrors);
+            MessageStore.Add(new FieldIdentifier(Data, nameof(Data.Password)), result.Result.PasswordErrors);
+            return;
+        }
+
+        if (!await AuthenticationService.TryAuthenticateAsync(email, password))
+        {
+            throw new InvalidOperationException("This should never logically happen, as after a successful register, login should succeed.");
+        }
+
+        Data.Email = null;
+        Data.Password = null;
+    }
+
+    private async Task OnLoginAsync()
+    {
+        if (Data.Email is not { } email || Data.Password is not { } password)
+        {
+            return;
+        }
+
+        MessageStore.Clear();
+
+        if (await AuthenticationService.TryAuthenticateAsync(email, password))
+        {
+            Data.Email = null;
+            Data.Password = null;
+            CurrentTask = await TaskService.GetRunningTaskAsync();
+            return;
+        }
+
+        MessageStore.Add(new FieldIdentifier(Data, nameof(Data.Email)), "Possibly incorrect email address.");
+        MessageStore.Add(new FieldIdentifier(Data, nameof(Data.Password)), "Possibly incorrect password.");
+    }
+
+    private class AuthenticationData
+    {
+        [Required(ErrorMessage = "Email required.", AllowEmptyStrings = false), EmailAddress, DataType(DataType.EmailAddress)]
+        public string? Email { get; set; }
+
+        [Required(ErrorMessage = "Password required.", AllowEmptyStrings = false)]
+        public string? Password { get; set; }
+    }
+
+    public void Dispose()
+    {
+        AuthenticationService.AuthenticationStateChanged -= InvokeStateHasChangedAsync;
+        _timer.Elapsed -= OnTimerElapsed;
+        _timer.Dispose();
+    }
+
+    private async Task<AutoCompleteDataProviderResult<Common.Task>> TaskDataProvider(AutoCompleteDataProviderRequest<Common.Task> request) =>
+        request.ApplyTo((await TaskService.GetTasksAsync())
+            .Where(task => task.State is not TaskState.Completed)
+            .OrderBy(task => task.Name));
+
+    private async Task OnTaskCompleteChanged(Common.Task? task)
+    {
+        CurrentTask = task;
+
+        if (task is null)
+        {
+            return;
+        }
+
+        await TaskService.StartTaskAsync(task);
+    }
+
+    private async Task OnPauseTaskAsync()
+    {
+        await TaskService.PauseTaskAsync(CurrentTask!);
+        CurrentTask = null;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnCompleteTaskAsync()
+    {
+        await TaskService.CompleteTaskAsync(CurrentTask!);
+        CurrentTask = null;
+        await InvokeAsync(StateHasChanged);
+    }
+
+}
